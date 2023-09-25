@@ -1,9 +1,3 @@
-##This code loops through a list of CQC webaddresses to pull out the review date. 
-##This code is based on using the table from UK Health Dimensions, but if you 
-##have a list of the required GP practices and their CQC location ID it would
-##be easy to create these yourself.
-
-
 library(dplyr)
 library(odbc)
 library(dbplyr)
@@ -11,6 +5,7 @@ library(DBI)
 library(rvest)
 library(stringr)
 library(purrr)
+
 
 
 
@@ -24,7 +19,7 @@ CQC_Data <- tbl(UK_Health, in_schema("cqc","Locations_SCD")) |>
   mutate(URL = gsub("public/v1/","", URL)) |> 
   mutate(URL = gsub("locations","location", URL))
 
-ReviewDatesList <- list()
+ReviewDates2 <- list()
 
 for (url in CQC_Data$URL) {
 
@@ -38,7 +33,7 @@ web_data_html <- html_nodes(webpage,'.service-overview-meta')
 #Converting the ranking data to text
 web_data <- html_text(web_data_html) 
 
-ReviewDatesList[[url]] <- c(web_data, "NULL")
+ReviewDates2[[url]] <- c(web_data, url )
 }
 
 
@@ -47,9 +42,11 @@ ReviewDate <- data.frame(ReviewDates2) |>
   mutate(X1 = gsub("Latest review:\n","",X1)) |> 
   mutate(X1 = trimws(X1)) |> 
   mutate(X1 = sub("^(\\S*\\s+\\S+\\s+\\S+).*", "\\1", X1)) |> 
+  mutate(X1 = case_when(X1==X2 ~ "", T ~ X1))
 
   
-  CQC_Data <- CQC_Data |> mutate(ReviewDate = ReviewDate$X1 )  
-  
+  CQC_Data <- CQC_Data |> left_join(ReviewDate, by = c('URL' = 'X2'))
+    
+
 
 
